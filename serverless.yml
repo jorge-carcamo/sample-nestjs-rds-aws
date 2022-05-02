@@ -1,0 +1,43 @@
+service: sample-nestjs-rds-aws
+app: sample-nestjs-rds-aws
+variablesResolutionMode: 20210326
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: ${env:VAR_AWS_REGION, 'us-east-1'}
+  memorySize: 512
+  timeout: 300
+  environment:
+    VAR_AUTOLOAD_ENTITIES: ${env:VAR_AUTOLOAD_ENTITIES, 'true'}
+    VAR_SYNCHRONIZE: ${env:VAR_SYNCHRONIZE, 'false'}
+    VAR_AWS_REGION: ${env:VAR_AWS_REGION, 'us-east-1'}
+    VAR_ARN_SECRET_MANAGER: ${env:VAR_SECRET_NAME, '*'}
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "kms:Decrypt"
+          Resource:
+            Fn::Sub: ${env:VAR_KEY_KMS, '*'}
+        - Effect: "Allow"
+          Action:
+            - "secretsmanager:GetSecretValue"
+          Resource:
+            Fn::Sub: ${env:VAR_SECRET_NAME, '*'}
+
+functions:
+  main:
+    handler: src/lambda.handler
+    events:
+      - http:
+          method: any
+          path: /{any+}
+          authorizer:
+            arn: ${env:VAR_COGNITO, '*'}
+            identitySource: method.request.header.x-api-token
